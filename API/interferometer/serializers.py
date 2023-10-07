@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from .models import Device
 
 class LocationSerializer(serializers.Serializer):
     latitude = serializers.FloatField()
@@ -8,3 +9,8 @@ class LocationSerializer(serializers.Serializer):
 class LocationsListSerializer(serializers.Serializer):
     locations = LocationSerializer(many=True)
     reference = LocationSerializer()
+
+class DeviceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Device
+        fields = '__all__'
