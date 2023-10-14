@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Device
+from .models import Device, Admin, Group
 
 class LocationSerializer(serializers.Serializer):
     latitude = serializers.FloatField()
@@ -13,4 +13,14 @@ class LocationsListSerializer(serializers.Serializer):
 class DeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Device
+        fields = '__all__'
+
+class AdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Admin
+        fields = '__all__'
+
+class GroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Group
         fields = '__all__'
