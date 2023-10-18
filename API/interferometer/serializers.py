@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Device, Admin, Group
+from .models import Device, Admin, Group, RefPoint
 
 class LocationSerializer(serializers.Serializer):
     latitude = serializers.FloatField()
@@ -23,4 +23,9 @@ class AdminSerializer(serializers.ModelSerializer):
 class GroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
+        fields = '__all__'
+
+class RefPointSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RefPoint
         fields = '__all__'

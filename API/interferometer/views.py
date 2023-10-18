@@ -8,9 +8,10 @@ from .serializers import (
     DeviceSerializer,
     AdminSerializer,
     GroupSerializer,
+    RefPointSerializer,
 )
 from .functions import simulation
-from .models import Device, Admin, Group
+from .models import Device, Admin, Group, RefPoint
 from django.utils import timezone
 from rest_framework import status
 
@@ -25,14 +26,29 @@ def calculate_centroid(request):
             [reference["latitude"], reference["longitude"], reference["altitude"]]
         )
         df = pd.DataFrame(locations)
-        simulation(12, 20, 0, df, reference2)
+        print(serializer)
+        #simulation(12, 20, 0, df, reference2)
     return Response(serializer.errors, status=400)
+
+@api_view(["POST"])
+def recibir(request):
+    serializer = LocationsListSerializer(data=request.data)
+    if serializer.is_valid():
+        locations = serializer.validated_data["locations"]
+        #reference = serializer.validated_data["reference"]
+        print(locations)
+        #print(reference)
+        #print(serializer)
+        return Response(status=200)
+    else:
+        print("error")
+        return Response( status=400)
 
 
 class DeviceViewSet(viewsets.ModelViewSet):
     queryset = Device.objects.all()
     serializer_class = DeviceSerializer
-    lookup_field = 'device_id'
+    lookup_field = "device_id"
 
     def get_queryset(self):
         queryset = Device.objects.all()
@@ -64,9 +80,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 {"detail": "Device not found."}, status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=True
-        )
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
@@ -94,10 +108,15 @@ class GroupRetrieveView(viewsets.ModelViewSet):
         for group in groups:
             device = Device.objects.filter(actual_group=group).first()
             if device:
-                print(device.modified_at)
                 difference = current_time - device.modified_at
-                group.last_time_used = difference.total_seconds() / 60
+                group.last_time_used = difference.total_seconds() / 3600
             else:
                 group.last_time_used = 0
             group.save()
         return groups
+
+
+class RefPointView(viewsets.ModelViewSet):
+    queryset = RefPoint.objects.all()
+    serializer_class = RefPointSerializer
+    lookup_field ='actual_group'
