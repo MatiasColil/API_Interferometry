@@ -10,14 +10,18 @@ from .serializers import (
     GroupSerializer,
     RefPointSerializer,
 )
-from .functions import simulation
+from .functions import simulation, new_positions
 from .models import Device, Admin, Group, RefPoint
 from django.utils import timezone
 from rest_framework import status
+from firebase_admin import messaging
+from io import BytesIO
+import cv2
+from django.http import FileResponse
 
 
 @api_view(["POST"])
-def calculate_centroid(request):
+def doSimulation(request):
     serializer = LocationsListSerializer(data=request.data)
     if serializer.is_valid():
         locations = serializer.validated_data["locations"]
@@ -26,23 +30,10 @@ def calculate_centroid(request):
             [reference["latitude"], reference["longitude"], reference["altitude"]]
         )
         df = pd.DataFrame(locations)
-        print(serializer)
-        #simulation(12, 20, 0, df, reference2)
-    return Response(serializer.errors, status=400)
-
-@api_view(["POST"])
-def recibir(request):
-    serializer = LocationsListSerializer(data=request.data)
-    if serializer.is_valid():
-        locations = serializer.validated_data["locations"]
-        #reference = serializer.validated_data["reference"]
-        print(locations)
-        #print(reference)
-        #print(serializer)
-        return Response(status=200)
-    else:
-        print("error")
-        return Response( status=400)
+        arr = np.array(df)
+        new = new_positions(arr, reference2)
+        img = simulation(12, 20, 0, new, reference2)
+    return FileResponse(img, content_type='image/png')
 
 
 class DeviceViewSet(viewsets.ModelViewSet):
@@ -120,3 +111,40 @@ class RefPointView(viewsets.ModelViewSet):
     queryset = RefPoint.objects.all()
     serializer_class = RefPointSerializer
     lookup_field ='actual_group'
+
+class MessageView(viewsets.ModelViewSet):
+    queryset = Device.objects.all()
+    serializer_class = DeviceSerializer
+
+    def get_queryset(self):
+        group = self.request.query_params.get('actual_group', None)
+        devices = Device.objects.filter(actual_group=group)
+
+        return devices
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        token = list(queryset.values_list('tokenFCM', flat=True))
+
+        message = messaging.MulticastMessage(tokens=token)
+        response = messaging.send_multicast(message)
+
+        return Response({'enviadas': response.success_count, 'fallidas': response.failure_count}, status=status.HTTP_200_OK)
+
+@api_view(["POST"])
+def enviar (request):
+    # register =[
+    #     'eRgs1kV-ReCvTc8a61TYUa:APA91bEx9JkK0MB5jtrKAxfdDxJkn9cqnYSk4n9ZfN9MvN14qCRjOqEr4d7mk9Xr3MhXemEaXdTx6w_gyVrkr323vr88ZzG4h0bfErTIKywQeF87q8Nt2SNRIDZj_ATmo9AowOR85dmr',
+    #     'eAdBLL44RfWokjedjrd9Xo:APA91bFtXPG33qzQUMuZWjH-DQIOxTe4OvpBX0BOUwud_emaP-NH8M72VdwEtf9Po5mZ2VLy-qMHFgbcQjspERq2IqcgjXoI55gRYl5uN2gdNtZ4qvki9AuiTqvmSoGFodhp0lqFXQVc'
+    # ]
+    # messaging.send_multicast(messaging.MulticastMessage(
+    #     tokens=register,
+
+    # ))
+    mes = messaging.Message(
+        token="ez2_FLmZRFiQyVDi7DaEb4:APA91bGdCQg0PEr8jFn9rCbqDESP89KskDr8-XYftUpk6_j1HPi6jzDXr0xvBF71EKZf2bE8J79BGRRFU0g-gSkKZdlOsJ8gFBeJIDfS_NA9_YzfTVOSbIezpPsvQM5GC5V0wjInyxkA",
+        android=messaging.AndroidConfig(priority='high')
+    )
+    print(mes)
+    messaging.send(mes)
+    return Response(status=200)

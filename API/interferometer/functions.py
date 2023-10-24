@@ -6,10 +6,44 @@ import matplotlib.pyplot as plt
 import cv2
 from astropy.coordinates import EarthLocation, AltAz, ITRS, CartesianRepresentation
 import itertools
+from io import BytesIO
+
+pd.set_option('display.precision', 17)
+np.set_printoptions(precision=20)
+
 
 const_c = 3e8   # speed of light [m/s]
 frequency = 5e9              # observing frequency [Hz]
 wavelength = const_c/frequency # receiving wavelength [metres]
+
+def new_positions(df, reference):
+
+    lats = df[:,0]
+    lons = df[:,1]
+    distances = df[:,3]
+    
+    # Bearing
+    dLons = np.radians(lons - reference[1])
+    y = np.sin(dLons) * np.cos(np.radians(lats))
+    x = np.cos(np.radians(reference[0])) * np.sin(np.radians(lats)) - np.sin(np.radians(reference[0])) * np.cos(np.radians(lats)) * np.cos(dLons)
+    bearing = np.degrees(np.arctan2(y, x))
+    bearing = np.trunc((bearing + 360) % 360)
+
+    # Nuevas posiciones
+    R = 6371000
+    lat1 = np.radians(reference[0])
+    lon1 = np.radians(reference[1])
+    bearing = np.radians(bearing)
+    
+    lat2 = np.arcsin(np.sin(lat1) * np.cos(distances / R) + np.cos(lat1) * np.sin(distances / R) * np.cos(bearing))
+    lon2 = lon1 + np.arctan2(np.sin(bearing) * np.sin(distances / R) * np.cos(lat1), np.cos(distances / R) - np.sin(lat1) * np.sin(lat2))
+    
+
+    arr = np.column_stack((np.degrees(lat2), np.degrees(lon2), df[:,2]))
+
+    print(arr)
+
+    return arr
 
 def _earthlocation_to_altaz(location, reference_location):
     itrs_cart = location.get_itrs().cartesian
@@ -91,16 +125,13 @@ def fft_model_image(path):
     return pix, ffts
 
 def geodetic_to_local_xyz(df, reference_location):
-    ant_pos = EarthLocation.from_geodetic(df['latitude'], df['longitude'], df['altitude'])
+    ant_pos = EarthLocation.from_geodetic(df[:,0], df[:,1], df[:,2])
     ref_loc = EarthLocation.from_geodetic(reference_location[0],reference_location[1],reference_location[2])
     x, y, z = earth_location_to_local(ant_pos, ref_loc)
     stack = np.column_stack((x.value,y.value,z.value))
     return stack
 
 def simulation(t_obs, dec, path, df, reference_location):
-    print(df)
-    print("----------")
-    print(reference_location)
     xyz = geodetic_to_local_xyz(df, reference_location)
     baseline = baselines(xyz)
     HA, dec = h(t_obs, dec)
@@ -108,4 +139,6 @@ def simulation(t_obs, dec, path, df, reference_location):
     pixels, ffts=fft_model_image('./interferometer/media/cat1.jpg')
     sampling = grid_sampling(pixels, np.max(np.abs(baseline)), UV_coverage)
     obs= np.abs(np.fft.ifft2(np.fft.ifftshift(ffts*sampling)))
-    cv2.imwrite('interferometer/media/obs.png', obs)
+    is_success, buffer = cv2.imencode(".png", obs)
+    stream = BytesIO(buffer)
+    return stream

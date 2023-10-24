@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'interferometer',
-    'rest_framework.authtoken'
+    'rest_framework.authtoken',
+    'fcm_django',
 ]
 
 MIDDLEWARE = [
@@ -103,6 +104,20 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'API.wsgi.application'
 
+FCM_DJANGO_SETTINGS = {
+     # an instance of firebase_admin.App to be used as default for all fcm-django requests
+     # default: None (the default Firebase app)
+    "DEFAULT_FIREBASE_APP": None,
+     # default: _('FCM Django')
+    "APP_VERBOSE_NAME": "[string for AppConfig's verbose_name]",
+     # true if you want to have only one active device per registered user at a time
+     # default: False
+    "ONE_DEVICE_PER_USER": False,
+     # devices to which notifications cannot be sent,
+     # are deleted upon receiving error response from FCM
+     # default: False
+    "DELETE_INACTIVE_DEVICES": False,
+}
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -155,3 +170,7 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+from firebase_admin import initialize_app, credentials
+cred = credentials.Certificate('c:\\Users\\matia\\Desktop\\anddd\\focal-baton-401101-firebase-adminsdk-ay9a0-3bb95942a4.json')
+initialize_app(cred)

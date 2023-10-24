@@ -8,11 +8,11 @@ router.register(r'register',views.DeviceViewSet)
 router.register(r'admin', views.AdminViewSet)
 router.register(r'groups', views.GroupRetrieveView)
 router.register(r'ref', views.RefPointView)
+router.register(r'message', views.MessageView)
 
 urlpatterns = [
-    path('matrix_sum/', views.calculate_centroid),
+    path('simulation/', views.doSimulation),
     path('', include(router.urls)),
     path('auth/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/verify/', TokenVerifyView.as_view(), name='token_verify'),
-    path('test/', views.recibir),
 ]
