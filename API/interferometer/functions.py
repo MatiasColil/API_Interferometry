@@ -125,8 +125,8 @@ def fft_model_image(path):
     return pix, ffts
 
 def geodetic_to_local_xyz(df, reference_location):
-    ant_pos = EarthLocation.from_geodetic(df[:,0], df[:,1], df[:,2])
-    ref_loc = EarthLocation.from_geodetic(reference_location[0],reference_location[1],reference_location[2])
+    ant_pos = EarthLocation.from_geodetic(df[:,1], df[:,0], df[:,2])
+    ref_loc = EarthLocation.from_geodetic(reference_location[1],reference_location[0],reference_location[2])
     x, y, z = earth_location_to_local(ant_pos, ref_loc)
     stack = np.column_stack((x.value,y.value,z.value))
     return stack
@@ -139,6 +139,6 @@ def simulation(t_obs, dec, path, df, reference_location):
     pixels, ffts=fft_model_image('./interferometer/media/cat1.jpg')
     sampling = grid_sampling(pixels, np.max(np.abs(baseline)), UV_coverage)
     obs= np.abs(np.fft.ifft2(np.fft.ifftshift(ffts*sampling)))
-    is_success, buffer = cv2.imencode(".png", obs)
+    boolean, buffer = cv2.imencode(".png", obs)
     stream = BytesIO(buffer)
     return stream

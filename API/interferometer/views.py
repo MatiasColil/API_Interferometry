@@ -15,8 +15,6 @@ from .models import Device, Admin, Group, RefPoint
 from django.utils import timezone
 from rest_framework import status
 from firebase_admin import messaging
-from io import BytesIO
-import cv2
 from django.http import FileResponse
 
 
@@ -33,7 +31,9 @@ def doSimulation(request):
         arr = np.array(df)
         new = new_positions(arr, reference2)
         img = simulation(12, 20, 0, new, reference2)
-    return FileResponse(img, content_type='image/png')
+        return FileResponse(img, content_type='image/png')
+    else:
+        return Response(serializer.errors, status=400)
 
 
 class DeviceViewSet(viewsets.ModelViewSet):
@@ -130,21 +130,3 @@ class MessageView(viewsets.ModelViewSet):
         response = messaging.send_multicast(message)
 
         return Response({'enviadas': response.success_count, 'fallidas': response.failure_count}, status=status.HTTP_200_OK)
-
-@api_view(["POST"])
-def enviar (request):
-    # register =[
-    #     'eRgs1kV-ReCvTc8a61TYUa:APA91bEx9JkK0MB5jtrKAxfdDxJkn9cqnYSk4n9ZfN9MvN14qCRjOqEr4d7mk9Xr3MhXemEaXdTx6w_gyVrkr323vr88ZzG4h0bfErTIKywQeF87q8Nt2SNRIDZj_ATmo9AowOR85dmr',
-    #     'eAdBLL44RfWokjedjrd9Xo:APA91bFtXPG33qzQUMuZWjH-DQIOxTe4OvpBX0BOUwud_emaP-NH8M72VdwEtf9Po5mZ2VLy-qMHFgbcQjspERq2IqcgjXoI55gRYl5uN2gdNtZ4qvki9AuiTqvmSoGFodhp0lqFXQVc'
-    # ]
-    # messaging.send_multicast(messaging.MulticastMessage(
-    #     tokens=register,
-
-    # ))
-    mes = messaging.Message(
-        token="ez2_FLmZRFiQyVDi7DaEb4:APA91bGdCQg0PEr8jFn9rCbqDESP89KskDr8-XYftUpk6_j1HPi6jzDXr0xvBF71EKZf2bE8J79BGRRFU0g-gSkKZdlOsJ8gFBeJIDfS_NA9_YzfTVOSbIezpPsvQM5GC5V0wjInyxkA",
-        android=messaging.AndroidConfig(priority='high')
-    )
-    print(mes)
-    messaging.send(mes)
-    return Response(status=200)
