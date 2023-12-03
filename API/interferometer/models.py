@@ -25,9 +25,21 @@ class Admin(models.Model):
 
 
 class RefPoint(models.Model):
-    latitude= models.FloatField(blank=True, null=True)
-    longitude= models.FloatField(blank=True, null=True)
-    altitude= models.FloatField(blank=True, null=True)
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
+    altitude = models.FloatField(blank=True, null=True)
     actual_group = models.OneToOneField(
         "Group", on_delete=models.SET_NULL, blank=True, null=True, max_length=255
     )
+
+class Imagen(models.Model):
+    archivo = models.ImageField(upload_to='img/')
+
+class Parameters(models.Model):
+    observationTime = models.FloatField( blank=True, null=True)
+    declination = models.FloatField( blank=True, null=True)
+    samplingTime = models.FloatField( blank=True, null=True)
+    frequency = models.FloatField( blank=True, null=True)
+    idPath = models.IntegerField( blank=True, null=True)
+    groupId = models.IntegerField(unique=True, blank=True, null=True)
+    scale = models.FloatField(blank=True, null=True)
