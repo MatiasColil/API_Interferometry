@@ -13,11 +13,9 @@ class Device(models.Model):
     )
     modified_at = models.DateTimeField(auto_now=True)
 
-
 class Group(models.Model):
     Group = models.CharField(unique=True, max_length=255)
     last_time_used = models.FloatField(blank=True, null=True)
-
 
 class Admin(models.Model):
     username = models.CharField(max_length=255, unique=True)

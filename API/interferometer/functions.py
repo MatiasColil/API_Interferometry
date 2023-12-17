@@ -1,48 +1,16 @@
 import numpy as np
-import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import cv2
-from astropy.coordinates import EarthLocation, AltAz, ITRS, CartesianRepresentation
+from astropy.coordinates import EarthLocation, AltAz, ITRS
 from astropy.constants import c
-import itertools
 from io import BytesIO
 import base64
-
-pd.set_option('display.precision', 17)
-np.set_printoptions(precision=20)
+import cmcrameri.cm as cmc
 
 const_c = c.value   # speed of light [m/s]
 
-
-def long2xyzbroad(coords):
-    """
-    Returns the nominal ITRF (X, Y, Z) coordinates [m] for a point at
-    geodetic latitude and longitude [radians] and elevation [m].
-    The ITRF frame used is not the official ITRF, just a right
-    handed Cartesian system with X going through 0 latitude and 0 longitude,
-    and Z going through the north pole.
-    orig. source: http://www.oc.nps.edu/oc2902w/coord/llhxyz.htm
-    """
-
-    lat = np.radians(coords[:,0])
-    lon = np.radians(coords[:,1])
-    elevation = coords[:,2]
-
-
-    er=6378137.0
-    rf=298.257223563
-
-    f=1./rf
-    esq=2*f-f**2
-    nu=er/np.sqrt(1.-esq*(np.sin(lat))**2)
-
-    x=(nu+elevation)*np.cos(lat)*np.cos(lon)
-    y=(nu+elevation)*np.cos(lat)*np.sin(lon)
-    z=((1.-esq)*nu+elevation)*np.sin(lat)
-
-    return np.column_stack((x,y,z))
 
 def new_positions(df, reference, scale):
 
@@ -86,9 +54,16 @@ def _earthlocation_to_altaz(location, reference_location):
     local_itrs = ITRS(itrs_cart - itrs_ref_cart, location=reference_location)
     return local_itrs.transform_to(AltAz(location=reference_location))
 
-def earth_location_to_local(location, reference_location):
+def earth_location_to_local_enu(location, reference_location):
     altaz = _earthlocation_to_altaz(location, reference_location)
-    return altaz.cartesian.xyz
+    ned_coords =  altaz.cartesian.xyz
+    enu_coords = ned_coords[1], ned_coords[0], -ned_coords[2]
+    return np.array(enu_coords)
+
+def enu_to_local_altaz(enu_baselines, distance):
+    elevation = np.arctan2(enu_baselines[0], enu_baselines[1])
+    azimuth = np.arcsin(enu_baselines[2]/distance)
+    return elevation, azimuth
 
 def calc_RR(H,dec):
     """
@@ -104,7 +79,7 @@ def calc_RR(H,dec):
 
     return R
 
-def h(hObs, gradDec, t_muestreo):
+def compute_h(hObs, gradDec, t_muestreo):
 
     """ 
     hObs: tiempo de observación en horas
@@ -143,7 +118,7 @@ def grid_sampling(piximg, max_B, coverage, wavelength):
     figurePSF = plt.figure(figsize=(8, 8))
     plt.subplot()
     plt.title('Point Spread Function')
-    plt.imshow(psf.real, cmap='gray', vmax=0.1)
+    plt.imshow(psf.real, cmap=cmc.navia_r, vmax=0.1)
     #se lleva a base64
     bufPSF = BytesIO()
     figurePSF.savefig(bufPSF, format='png')
@@ -155,7 +130,7 @@ def grid_sampling(piximg, max_B, coverage, wavelength):
     figure = plt.figure(figsize=(8, 8))
     plt.subplot()
     plt.title('Cobertura cuadriculada')
-    plt.imshow(sampling.real, cmap='plasma')
+    plt.imshow(sampling.real, cmap=cmc.navia_r)
     #se lleva base64
     buf = BytesIO()
     figure.savefig(buf, format='png')
@@ -163,21 +138,36 @@ def grid_sampling(piximg, max_B, coverage, wavelength):
     
     return sampling, image_sampling_base64, image_psf_base64
 
-def baselines(xyz):
+def baselines(enu_coords):
+    """
+    enu_coords: arreglo de coordenadas en el sistema de referencia plano tangente local (ENU)
+    """
+    b_enu = enu_coords[..., np.newaxis] - enu_coords[:, np.newaxis,:]
+    b_enu = b_enu[:, ~np.eye(b_enu.shape[-1],dtype=bool)]
+    return b_enu
 
-    antenna_id = np.arange(0, len(xyz[:,0])) #cantidad de antenas
-    antenna_pair_combinations = np.fromiter(itertools.chain(*itertools.combinations(antenna_id, 2)), dtype=int).reshape(-1,2) #combinaciones
+def bENU_to_bEquatorial(b_enu, lat_obs):
+    """
+    b_enu: coordenadas de los baselines en el sistema de referencia plano tangente local (ENU)
+    lat_obs: latitud del centro del observatorio, expresado en grados
+    """
+    latitude = np.radians(lat_obs)
+    abs_b = np.sqrt(np.sum(b_enu**2, axis=0))  + 0.0000000000001
 
-    baselines = np.vstack([xyz[antenna_pair_combinations[:,0]] - xyz[antenna_pair_combinations[:,1]], 
-                       xyz[antenna_pair_combinations[:,1]] - xyz[antenna_pair_combinations[:,0]]]) # se generan los baselines
+    azimuth, elevation = enu_to_local_altaz(b_enu, abs_b)
 
-    return baselines
+    x_equatorial = np.cos(latitude) * np.sin(elevation) - np.sin(latitude) * np.cos(elevation) * np.cos(azimuth)
+    y_equatorial = np.cos(elevation) * np.sin(azimuth)
+    z_equatorial = np.sin(latitude) * np.sin(elevation) + np.cos(latitude) * np.cos(elevation) * np.cos(azimuth)
 
-def coverage(baseline, HA, dec, wavelength):
+    baseline_equatorial = abs_b * np.vstack([x_equatorial, y_equatorial, z_equatorial])
+    
+    return baseline_equatorial
+
+""" def coverage(baseline, HA, dec, wavelength):
     R = calc_RR(HA, dec).transpose(2,0,1)
     coverage = np.dot(R, baseline.T)/wavelength #se divide por la longitud de onda
-    #transpuesta para que no sean puntos (u,v) sobre un mapa sino que se vea como dado la rotación de la tierra se van generando elipses
-    #caso contrario solo serían circulos
+
     #se grafica
 
     fig = plt.figure(figsize=(8,8))
@@ -189,7 +179,31 @@ def coverage(baseline, HA, dec, wavelength):
     buf = BytesIO()
     fig.savefig(buf, format='png')
     image_base64 = base64.b64encode(buf.getvalue()).decode()
-    return coverage, image_base64
+    return coverage, image_base64 """
+
+def coverage(baselines, HA, dec, wavelength):
+    """
+    baselines: arreglo de coordenadas de los baselines en el sistema ecuatorial
+    HA: Ángulo horario en horas
+    dec: declinación en radianes,
+    wavelength: longitud de onda
+    """
+    R_matrix = calc_RR(HA, dec)
+    uvw_meters = np.sum(R_matrix[...,np.newaxis]*baselines[np.newaxis,:,np.newaxis,:], axis=1)
+    UV_coverage = np.column_stack((uvw_meters[0].reshape(-1), uvw_meters[1].reshape(-1)))/wavelength
+
+    #se grafica
+    fig = plt.figure(figsize=(8,8))
+    plt.title("Cobertura UV")
+    plt.scatter(x=UV_coverage[:,0],y=UV_coverage[:,1], c="black", marker='.', s=0.4)
+    plt.xlabel(r'$u\ [k\lambda]$')  # Usa 'r' antes de la cadena de texto para que Python la trate como raw string
+    plt.ylabel(r'$v\ [k\lambda]$')
+    #se lleva a base64
+    buf = BytesIO()
+    fig.savefig(buf, format='png')
+    image_base64 = base64.b64encode(buf.getvalue()).decode()
+
+    return UV_coverage, image_base64
 
 def fft_model_image(path):
     img = cv2.imread(path,0)
@@ -197,22 +211,21 @@ def fft_model_image(path):
     pix = img.shape[0]
     return pix, ffts
 
-def geodetic_to_local_xyz(df, reference_location):
+def geodetic_to_enu(df, reference_location):
     ant_pos = EarthLocation.from_geodetic(df[:,1], df[:,0], df[:,2])
     ref_loc = EarthLocation.from_geodetic(reference_location[1],reference_location[0],reference_location[2])
-    x, y, z = earth_location_to_local(ant_pos, ref_loc)
-    stack = np.column_stack((x.value,y.value,z.value))
-    return stack
+    enu_coords = earth_location_to_local_enu(ant_pos, ref_loc)
+    return enu_coords
 
 def simulation(t_obs, dec,t_muestreo, path, df, reference_location, frequency):
     wavelength = const_c / (frequency*1e9)
-    coords = long2xyzbroad(df)
-    #xyz = geodetic_to_local_xyz(df, reference_location)
-    baseline = baselines(coords)
-    HA, dec = h(t_obs, dec, t_muestreo)
-    UV_coverage, img_coverage = coverage(baseline, HA, dec, wavelength)
+    enu_coords = geodetic_to_enu(df, reference_location)
+    baseline = baselines(enu_coords)
+    baseline_equatorial = bENU_to_bEquatorial(baseline, reference_location[0])
+    HA, dec = compute_h(t_obs, dec, t_muestreo)
+    UV_coverage, img_coverage = coverage(baseline_equatorial, HA, dec,wavelength)
     pixels, ffts=fft_model_image(path)
-    sampling, img_sampling, img_psf = grid_sampling(pixels, np.max(np.abs(baseline)), UV_coverage, wavelength)
+    sampling, img_sampling, img_psf = grid_sampling(pixels, np.max(np.abs(baseline_equatorial)), UV_coverage, wavelength)
     obs= np.abs(np.fft.ifft2(np.fft.ifftshift(ffts*sampling)))
     boolean, buffer = cv2.imencode(".png", obs)
     stream = BytesIO(buffer)

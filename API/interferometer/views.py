@@ -31,14 +31,20 @@ def doSimulation(request):
         reference = serializer.validated_data["reference"]
         parameters = serializer.validated_data["parameter"]
         imagen_instance = get_object_or_404(Imagen, id=parameters["idPath"])
-        image_path2 = './media/'+imagen_instance.archivo.name
+        image_path = './media/'+imagen_instance.archivo.name
         reference2 = np.array(
             [reference["latitude"], reference["longitude"], reference["altitude"]]
         )
         df = pd.DataFrame(locations)
         arr = np.array(df)
-        new = new_positions(arr, reference2, parameters["scale"])
-        img_dirty, img_coverage, img_sampling, img_psf = simulation(parameters["observationTime"], parameters["declination"], parameters["samplingTime"], image_path2, new, reference2, parameters["frequency"])
+        new_pos = new_positions(arr, reference2, parameters["scale"])
+        img_dirty, img_coverage, img_sampling, img_psf = simulation(parameters["observationTime"], 
+                                                                    parameters["declination"], 
+                                                                    parameters["samplingTime"], 
+                                                                    image_path, 
+                                                                    new_pos, 
+                                                                    reference2, 
+                                                                    parameters["frequency"])
         return Response([
             {"img": img_dirty},
             {"img": img_coverage},
@@ -86,7 +92,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=False, methods=["delete"])
+    @action(detail=False, methods=["delete"], url_name="delete_by_group")
     def delete_by_group(self, request):
         group_id = request.query_params.get("actual_group", None)
 
@@ -136,10 +142,11 @@ class RefPointView(viewsets.ModelViewSet):
 
 
 class MessageView(viewsets.ModelViewSet):
-    queryset = Device.objects.all()
     serializer_class = DeviceSerializer
-
+    queryset = Device.objects.none()
+    
     def get_queryset(self):
+        queryset = Device.objects.all()
         group = self.request.query_params.get("actual_group", None)
         devices = Device.objects.filter(actual_group=group)
 
