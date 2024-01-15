@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-r0(f^@8__y&+3661h2&1$3ryksfw$fonsmtibe7)r^idk%d%k*'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -162,6 +162,6 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 from firebase_admin import initialize_app, credentials
-_credentials = os.path.join(BASE_DIR, 'credentials\\focal-baton-401101-firebase-adminsdk-ay9a0-3bb95942a4.json')
+_credentials = os.path.join(BASE_DIR, 'credentials/focal-baton-401101-firebase-adminsdk-ay9a0-3bb95942a4.json')
 cred = credentials.Certificate(_credentials)
 initialize_app(cred)
