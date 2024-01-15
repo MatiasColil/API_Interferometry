@@ -5,7 +5,7 @@ class LocationSerializer(serializers.Serializer):
     latitude = serializers.FloatField()
     longitude = serializers.FloatField()
     altitude = serializers.FloatField()
-    distance = serializers.FloatField()
+    distance = serializers.FloatField() 
 
 class ReferenceSerializer(serializers.Serializer):
     latitude = serializers.FloatField()

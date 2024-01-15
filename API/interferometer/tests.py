@@ -8,6 +8,8 @@ from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 from unittest.mock import patch
+from .functions import *
+import unittest
 
 
 class DeviceModelTestCase(TestCase):
@@ -78,7 +80,10 @@ class RefPointModelTestCase(TestCase):
 
     def test_refpoint_creation(self):
         ref_point = RefPoint.objects.create(
-            latitude=10.0, longitude=20.0, altitude=30.0, actual_group=self.group
+            latitude=10.0,
+            longitude=20.0, 
+            altitude=30.0, 
+            actual_group=self.group
         )
 
         self.assertTrue(isinstance(ref_point, RefPoint))
@@ -354,7 +359,7 @@ class GroupRetrieveViewTestCase(APITestCase):
         Device.objects.create(device_id='2', actual_group=self.group2, modified_at=timezone.now() - timedelta(days=1, hours=3))
 
     def test_get_groups_with_last_time_used(self):
-        # Prueba obtener la lista de grupos con last_time_used actualizado
+
         url = reverse('group-list')
         response = self.client.get(url)
 
@@ -456,4 +461,201 @@ class DoSimulationTestCase(APITestCase):
 
     def tearDown(self):
         self.imagen.archivo.delete(save=False)
+
+class TestCalcRR(unittest.TestCase):
+
+    def test_scalar_input(self):
+        H = 0.
+        dec = 10
+        expected_output = np.array([[[ 0.],[ 1.],[ 0.]],
+                                    [[ 0.54402111],[-0.],[-0.83907153]],
+                                    [[-0.83907153],[ 0.],[-0.54402111]]])
+        result = calc_RR(H, dec)
+        np.testing.assert_array_almost_equal(result, expected_output)
+
+    def test_array_input(self):
+        H = np.array([1.0, 2.0])
+        dec = 10
+        expected_output = np.array([[[ 0.84147098,  0.90929743],
+        [ 0.54030231, -0.41614684],
+        [ 0.        ,  0.        ]],
+
+       [[ 0.29393586, -0.22639266],
+        [-0.45777798, -0.494677  ],
+        [-0.83907153, -0.83907153]],
+
+       [[-0.45335228,  0.34917696],
+        [ 0.70605435,  0.76296558],
+        [-0.54402111, -0.54402111]]])
+        result = calc_RR(H, dec)
+        np.testing.assert_array_almost_equal(result, expected_output)
+
+class TestComputeH(unittest.TestCase):
+
+    def test_compute_h(self):
+        hObs = 1
+        gradDec = 25
+        t_muestreo = 60
+
+        HA, dec = compute_h(hObs, gradDec, t_muestreo)
+
+        expected_HA = np.array([-0.26179939,  0.])
+        expected_dec = np.radians(25)
+
+        np.testing.assert_array_almost_equal(HA, expected_HA)
+        np.testing.assert_array_almost_equal(dec, expected_dec)
+
+class TestNewPositions(unittest.TestCase):
+
+    def test(self):
+        df = np.array([[40.7128, -74.0060, 0], [34.0522, -118.2437, 0]]) 
+        reference = [40.7128, -74.0060]  
+        scale = 5.0  
+        expected_output = np.array([[  40.7128    ,  -74.006     ,    0.        ],
+       [ -40.48624954, -250.03289698,    0.        ]]) 
+        result = new_positions(df, reference, scale)
+        np.testing.assert_array_almost_equal(result, expected_output)
+
+class TestEnuToLocalAltAz(unittest.TestCase):
+
+    def test(self):
+        enu_baselines = np.array([10, 10, 5])
+        distance = 15
+
+        expected_elevation = np.arctan2(enu_baselines[0], enu_baselines[1])
+        expected_azimuth = np.arcsin(enu_baselines[2] / distance)
+        elevation, azimuth = enu_to_local_altaz(enu_baselines, distance)
+        
+
+        self.assertAlmostEqual(elevation, expected_elevation)
+        self.assertAlmostEqual(azimuth, expected_azimuth)
+
+class TestBaselines(unittest.TestCase):
+
+    def test(self):
+        base = np.array([[ 3.94325154e+01,  2.23895371e+01],
+       [-3.43190792e+01, -7.03039494e+01],
+       [ 2.14257584e-04,  4.27596239e-04]])
+
+        expected_output = np.array([[ 1.70429783e+01, -1.70429783e+01],
+       [ 3.59848702e+01, -3.59848702e+01],
+       [-2.13338655e-04,  2.13338655e-04]])
+        result = baselines(base)
+        np.testing.assert_array_almost_equal(result, expected_output)
+
+class TestEarthLocationToENU(unittest.TestCase):
+
+    def setUp(self):
+
+        data = [
+            [-41.464183, -72.919694, 100],
+            [-41.464507, -72.919898, 100],]
+        
+        data = np.array(data)
+        ref = np.array((-41.463874,-72.920166,100))
+        self.ant_pos = EarthLocation.from_geodetic(data[:,1], data[:,0], data[:,2])
+        self.ref_loc = EarthLocation.from_geodetic(ref[1],ref[0],ref[2])
+
+    def test_earth_location_to_local_enu_integration(self):
+
+        expected_output = np.array([[ 3.94325154e+01,  2.23895371e+01],
+                                    [-3.43190792e+01, -7.03039494e+01],
+                                    [ 2.14257584e-04,  4.27596239e-04]])
+
+        result = earth_location_to_local_enu(self.ant_pos, self.ref_loc)
+
+        self.assertIsInstance(result, np.ndarray)
+        np.testing.assert_array_almost_equal(result, expected_output)
+
+class TestGeodeticToENU(unittest.TestCase):
+
+    def setUp(self):
+
+        data = [[-41.464183, -72.919694, 100],
+                [-41.464507, -72.919898, 100],]
+        
+        self.data = np.array(data)
+        self.ref = np.array((-41.463874,-72.920166,100))
+
+    def test_geodetic_to_enu(self):
+
+        expected_output = np.array([[ 3.94325154e+01,  2.23895371e+01],
+                                    [-3.43190792e+01, -7.03039494e+01],
+                                    [ 2.14257584e-04,  4.27596239e-04]])
+
+        result = geodetic_to_enu(self.data, self.ref)
+
+        self.assertIsInstance(result, np.ndarray)
+        np.testing.assert_array_almost_equal(result, expected_output)
+
+class TestBaselinesEquatorial(unittest.TestCase):
+
+    def setUp(self):
+
+        self.base_enu = np.array([[ 1.70429783e+01, -1.70429783e+01],
+       [ 3.59848702e+01, -3.59848702e+01],
+       [-2.13338654e-04,  2.13338654e-04]])
+        
+        self.latitude = -41.463874
+
+    def test_baselines_enu_to_equatorial(self):
+
+        expected_output = np.array([[ 23.8271387 , -23.8271387 ],
+                                    [ 17.0429783 , -17.0429783 ],
+                                    [ 26.96624456, -26.96624456]])
+
+        result = bENU_to_bEquatorial(self.base_enu, self.latitude)
+
+        self.assertIsInstance(result, np.ndarray)
+        np.testing.assert_array_almost_equal(result, expected_output)
+
+class TestCoverage(unittest.TestCase):
+
+    def setUp(self):
+        self.base_equ = np.array([[ 23.8271387 , -23.8271387 ],
+                                  [ 17.0429783 , -17.0429783 ],
+                                  [ 26.96624456, -26.96624456]])
+        self.H = 0.
+        self.dec = 45
+        self.wavelength = 0.003199492614727855
+    
+    def test_coverage(self):
+        
+        expected_output = np.array([[ 5326.7753202 , -1909.25118752],
+                                    [-5326.7753202 ,  1909.25118752]])
+        
+        result, _ = coverage(self.base_equ, self.H, self.dec, self.wavelength)
+
+        np.testing.assert_array_almost_equal(result, expected_output)
+
+class TestGridSampling(unittest.TestCase):
+
+    def setUp(self):
+        self.pixel = 10
+        self.max_base_equ = 26.966244558974477
+        self.wavelength = 0.003199492614727855
+        self.coverage = np.array([[ 5326.7753202 , -1909.25118752],
+                                  [-5326.7753202 ,  1909.25118752]])
+    
+    def test_grid_sampling(self):
+
+        expected_output = np.array([[0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j,0.+0.j, 0.+0.j],
+                                    [0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j,0.+0.j, 0.+0.j],
+                                    [0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j,0.+0.j, 0.+0.j],
+                                    [0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j,0.+0.j, 0.+0.j],
+                                    [0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j,0.+0.j, 0.+0.j],
+                                    [0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 1.+0.j, 0.+0.j, 1.+0.j, 0.+0.j,0.+0.j, 0.+0.j],
+                                    [0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j,0.+0.j, 0.+0.j],
+                                    [0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j,0.+0.j, 0.+0.j],
+                                    [0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j,0.+0.j, 0.+0.j],
+                                    [0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j,0.+0.j, 0.+0.j]])
+        
+        result, _ ,_ = grid_sampling(self.pixel, self.max_base_equ,self.coverage,self.wavelength)
+
+        np.testing.assert_array_almost_equal(result, expected_output)
+
+
+
+
+
 

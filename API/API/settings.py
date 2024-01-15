@@ -162,5 +162,6 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 from firebase_admin import initialize_app, credentials
-cred = credentials.Certificate('c:\\Users\\matia\\Desktop\\anddd\\focal-baton-401101-firebase-adminsdk-ay9a0-3bb95942a4.json')
+_credentials = os.path.join(BASE_DIR, 'credentials\\focal-baton-401101-firebase-adminsdk-ay9a0-3bb95942a4.json')
+cred = credentials.Certificate(_credentials)
 initialize_app(cred)

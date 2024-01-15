@@ -45,7 +45,6 @@ def new_positions(df, reference, scale):
 
     arr = np.column_stack((np.degrees(lat2), np.degrees(lon2), df[:,2]))
 
-
     return arr
 
 def _earthlocation_to_altaz(location, reference_location):
@@ -88,7 +87,7 @@ def compute_h(hObs, gradDec, t_muestreo):
        """
 
     observacion_grados = hObs * 15.0
-    HA = np.arange(-np.radians(observacion_grados), np.radians(observacion_grados), np.radians(t_muestreo/60))  # [radianes]
+    HA = np.arange(-np.radians(observacion_grados), np.radians(observacion_grados), np.radians((t_muestreo/60)*15))  # [radianes]
     dec = np.radians(gradDec)
     return HA, dec
 
@@ -104,7 +103,7 @@ def grid_sampling(piximg, max_B, coverage, wavelength):
     uvgrid = np.zeros((piximg, piximg)) + 1j*np.zeros((piximg, piximg))
     min_lambda=wavelength #minima longitud de onda lambda
     delta_x = (min_lambda / max_B) / 7
-    delta_u = 1 / ((piximg * delta_x) + 0.0000001)
+    delta_u = 1 / (piximg * delta_x)
 
     u_pixel2 = np.floor(0.5 + coverage[:, 0] / delta_u + piximg / 2).astype(int)
     v_pixel2 = np.floor(0.5 + coverage[:, 1] / delta_u + piximg / 2).astype(int)
@@ -152,7 +151,7 @@ def bENU_to_bEquatorial(b_enu, lat_obs):
     lat_obs: latitud del centro del observatorio, expresado en grados
     """
     latitude = np.radians(lat_obs)
-    abs_b = np.sqrt(np.sum(b_enu**2, axis=0))  + 0.0000000000001
+    abs_b = np.sqrt(np.sum(b_enu**2, axis=0))
 
     azimuth, elevation = enu_to_local_altaz(b_enu, abs_b)
 
@@ -189,13 +188,13 @@ def coverage(baselines, HA, dec, wavelength):
     wavelength: longitud de onda
     """
     R_matrix = calc_RR(HA, dec)
-    uvw_meters = np.sum(R_matrix[...,np.newaxis]*baselines[np.newaxis,:,np.newaxis,:], axis=1)
-    UV_coverage = np.column_stack((uvw_meters[0].reshape(-1), uvw_meters[1].reshape(-1)))/wavelength
+    uvw_dot = np.sum(R_matrix[...,np.newaxis]*baselines[np.newaxis,:,np.newaxis,:], axis=1)
+    UV_coverage = np.column_stack((uvw_dot[0].reshape(-1), uvw_dot[1].reshape(-1)))/wavelength
 
     #se grafica
     fig = plt.figure(figsize=(8,8))
     plt.title("Cobertura UV")
-    plt.scatter(x=UV_coverage[:,0],y=UV_coverage[:,1], c="black", marker='.', s=0.4)
+    plt.scatter(x=UV_coverage[:,0]/1000,y=UV_coverage[:,1]/1000, c="black", marker='.', s=0.4)
     plt.xlabel(r'$u\ [k\lambda]$')  # Usa 'r' antes de la cadena de texto para que Python la trate como raw string
     plt.ylabel(r'$v\ [k\lambda]$')
     #se lleva a base64
@@ -211,15 +210,15 @@ def fft_model_image(path):
     pix = img.shape[0]
     return pix, ffts
 
-def geodetic_to_enu(df, reference_location):
-    ant_pos = EarthLocation.from_geodetic(df[:,1], df[:,0], df[:,2])
-    ref_loc = EarthLocation.from_geodetic(reference_location[1],reference_location[0],reference_location[2])
+def geodetic_to_enu(coords, reference_loc):
+    ant_pos = EarthLocation.from_geodetic(coords[:,1], coords[:,0], coords[:,2])
+    ref_loc = EarthLocation.from_geodetic(reference_loc[1],reference_loc[0],reference_loc[2])
     enu_coords = earth_location_to_local_enu(ant_pos, ref_loc)
     return enu_coords
 
-def simulation(t_obs, dec,t_muestreo, path, df, reference_location, frequency):
+def simulation(t_obs, dec,t_muestreo, path, geodetic_coords, reference_location, frequency):
     wavelength = const_c / (frequency*1e9)
-    enu_coords = geodetic_to_enu(df, reference_location)
+    enu_coords = geodetic_to_enu(geodetic_coords, reference_location)
     baseline = baselines(enu_coords)
     baseline_equatorial = bENU_to_bEquatorial(baseline, reference_location[0])
     HA, dec = compute_h(t_obs, dec, t_muestreo)
