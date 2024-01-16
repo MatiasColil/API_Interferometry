@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    "whitenoise.runserver_nostatic",
+    #"whitenoise.runserver_nostatic",
     'django.contrib.staticfiles',
     'rest_framework',
     'interferometer',
@@ -55,7 +55,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'interferometer.middlewares.CheckUserAdminMiddleware',
-    "whitenoise.middleware.WhiteNoiseMiddleware"
+    #"whitenoise.middleware.WhiteNoiseMiddleware"
 ]
 
 REST_FRAMEWORK = {
