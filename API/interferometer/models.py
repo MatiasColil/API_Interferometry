@@ -31,7 +31,7 @@ class RefPoint(models.Model):
     )
 
 class Imagen(models.Model):
-    archivo = models.ImageField(upload_to='img/')
+    archivo = models.ImageField()
 
 class Parameters(models.Model):
     observationTime = models.FloatField( blank=True, null=True)
