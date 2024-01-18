@@ -108,7 +108,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'API.wsgi.application'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = [BASE_DIR / "media"]
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
 # Database
@@ -158,20 +158,20 @@ USE_X_FORWARDED_HOST = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_URL = 'staticfiles/'
+#STATICFILES_DIRS = [BASE_DIR / "staticfiles"]
 
 # Configuración para archivos estáticos en producción
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {  
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",  # new
-    },
-}
+#STORAGES = {
+#    "default": {
+#        "BACKEND": "django.core.files.storage.FileSystemStorage",
+#    },
+#    "staticfiles": {  
+#        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",  # new
+#    },
+#}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
