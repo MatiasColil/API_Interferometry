@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 
 class Command(BaseCommand):
-    help = 'Comprueba la tabla auth_user y verifica que tenga al menos exista un usuario administrador, en caso contrario se crea.'
+    help = 'Comprueba la tabla auth_user y verifica que al menos exista un usuario administrador, en caso contrario se crea.'
 
     def handle(self, *args, **kwargs):
         try:
@@ -10,8 +10,8 @@ class Command(BaseCommand):
 
             # Si no hay usuarios administradores, se inserta uno
             if admin_count == 0:
-                user = User(username="admin2")
-                user.set_password("pass2")
+                user = User(username="DivulgadorInt")
+                user.set_password("Interferometer20XX")
                 user.is_staff= True
                 user.is_superuser= True
                 user.save()

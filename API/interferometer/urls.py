@@ -13,9 +13,9 @@ router.register(r'imagenes', views.ImagenViewSet)
 router.register(r'parameters', views.ParametersViewSet)
 
 urlpatterns = [
-    path('simulation/', views.doSimulation,name="simulation"),
+    path('simulation/', views.simuGuest,name="simulation"),
     path('', include(router.urls)),
     path('auth/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/verify/', TokenVerifyView.as_view(), name='token_verify'),
-    #path('test/', views.test)
+    path('simuadmin/', views.simuAdmin)
 ]

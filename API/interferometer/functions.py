@@ -122,6 +122,7 @@ def grid_sampling(piximg, max_B, coverage, wavelength):
     bufPSF = BytesIO()
     figurePSF.savefig(bufPSF, format='png')
     image_psf_base64 = base64.b64encode(bufPSF.getvalue()).decode()
+    plt.close(figurePSF)
 
     # S(u,v) = 1 otro caso S=0
     sampling[v_pixel2, u_pixel2] = 1.0
@@ -134,6 +135,7 @@ def grid_sampling(piximg, max_B, coverage, wavelength):
     buf = BytesIO()
     figure.savefig(buf, format='png')
     image_sampling_base64 = base64.b64encode(buf.getvalue()).decode()
+    plt.close(figure)
     
     return sampling, image_sampling_base64, image_psf_base64
 
@@ -163,23 +165,6 @@ def bENU_to_bEquatorial(b_enu, lat_obs):
     
     return baseline_equatorial
 
-""" def coverage(baseline, HA, dec, wavelength):
-    R = calc_RR(HA, dec).transpose(2,0,1)
-    coverage = np.dot(R, baseline.T)/wavelength #se divide por la longitud de onda
-
-    #se grafica
-
-    fig = plt.figure(figsize=(8,8))
-    plt.title("Cobertura UV")
-    plt.scatter(x=coverage[:,0],y=coverage[:,1], c="black", marker='.')
-    plt.xlabel(r'$u\ \lambda$')  # Usa 'r' antes de la cadena de texto para que Python la trate como raw string
-    plt.ylabel(r'$v\ \lambda$')
-    #se lleva a base64
-    buf = BytesIO()
-    fig.savefig(buf, format='png')
-    image_base64 = base64.b64encode(buf.getvalue()).decode()
-    return coverage, image_base64 """
-
 def coverage(baselines, HA, dec, wavelength):
     """
     baselines: arreglo de coordenadas de los baselines en el sistema ecuatorial
@@ -201,6 +186,7 @@ def coverage(baselines, HA, dec, wavelength):
     buf = BytesIO()
     fig.savefig(buf, format='png')
     image_base64 = base64.b64encode(buf.getvalue()).decode()
+    plt.close(fig)
 
     return UV_coverage, image_base64
 

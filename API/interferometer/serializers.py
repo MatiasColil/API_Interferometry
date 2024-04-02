@@ -54,3 +54,7 @@ class ParametersSerializer(serializers.ModelSerializer):
     class Meta:
         model = Parameters
         fields = '__all__'
+
+class ParameterGroupSerializer(serializers.Serializer):
+    actual_group = serializers.IntegerField()
+    parameter = ParametersSerializer()

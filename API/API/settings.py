@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-r0(f^@8__y&+3661h2&1$3ryksfw$fonsmtibe7)r^idk%d%k*'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -38,7 +38,6 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    #"whitenoise.runserver_nostatic",
     'django.contrib.staticfiles',
     'rest_framework',
     'interferometer',
@@ -55,7 +54,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'interferometer.middlewares.CheckUserAdminMiddleware',
-    #"whitenoise.middleware.WhiteNoiseMiddleware"
+    'interferometer.middlewares.CheckImageMiddleware',
 ]
 
 REST_FRAMEWORK = {
@@ -65,7 +64,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=120),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(minutes=0),
     "ROTATE_REFRESH_TOKENS": False,
 
@@ -116,8 +115,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'interferometry',
+        'USER': 'postgres',
+        'PASSWORD': 'superadmin',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -159,19 +162,10 @@ USE_X_FORWARDED_HOST = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'staticfiles/'
-#STATICFILES_DIRS = [BASE_DIR / "staticfiles"]
 
 # Configuración para archivos estáticos en producción
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-#STORAGES = {
-#    "default": {
-#        "BACKEND": "django.core.files.storage.FileSystemStorage",
-#    },
-#    "staticfiles": {  
-#        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",  # new
-#    },
-#}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -179,6 +173,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 from firebase_admin import initialize_app, credentials
-_credentials = os.path.join(BASE_DIR, 'credentials/focal-baton-401101-firebase-adminsdk-ay9a0-3bb95942a4.json')
+_credentials = os.path.join(BASE_DIR, 'credentials/interferometer-2f734-firebase-adminsdk-l7r4u-179584feb0.json')
 cred = credentials.Certificate(_credentials)
 initialize_app(cred)

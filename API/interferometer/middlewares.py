@@ -12,3 +12,15 @@ class CheckUserAdminMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         return response
+
+class CheckImageMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+        
+        if not hasattr(settings, 'IMAGE_CHECK_DONE'):
+            call_command('check_img')
+            settings.IMAGE_CHECK_DONE = True
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        return response
