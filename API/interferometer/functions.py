@@ -11,6 +11,28 @@ import cmcrameri.cm as cmc
 
 const_c = c.value   # speed of light [m/s]
 
+def weighting_scheme(weights, uv_pix_1d, N, scheme="natural", robust_param=2.):
+    """ 
+    weigths: array one likes
+    uv_pix_1d: 
+    N: pix img
+    scheme: tipo de ponderación. natural, uniform, robust
+     
+    """
+    weights_bincount = np.bincount(uv_pix_1d, weights, minlength=N*N)
+    weights_w_1d = weights_bincount[uv_pix_1d]
+    
+    if scheme.lower() == "natural":
+        return weights
+    elif scheme.lower() == "uniform":
+        return weights/weights_w_1d
+    elif scheme.lower() == "robust":
+        f_squared_num = (5.* np.power(10, -robust_param))**2
+        f_squared_den = np.sum(weights_w_1d**2)/np.sum(weights)
+        f_squared = f_squared_num/f_squared_den
+        return weights/(1.+(weights_w_1d*f_squared))
+    else:
+        raise ValueError("Not known scheme")
 
 def new_positions(df, reference, scale):
 
@@ -91,53 +113,62 @@ def compute_h(hObs, gradDec, t_muestreo):
     dec = np.radians(gradDec)
     return HA, dec
 
-def grid_sampling(piximg, max_B, coverage, wavelength):
+def grid_sampling(piximg, max_B, coverage, wavelength, scheme, robust_param):
     """ 
     piximg: cantidad de pixeles de la imagen modelo, tiene que ser nxn
     max_B: baseline mas largo
     uvcoverage: array uv cobertura
     wavelength: longitud de onda
+    scheme: tipo de esquema, natural, uniform o robust
 
        """
-    sampling = np.zeros((piximg, piximg)) + 1j*np.zeros((piximg, piximg))
-    uvgrid = np.zeros((piximg, piximg)) + 1j*np.zeros((piximg, piximg))
+    #sampling = np.zeros((piximg, piximg)) + 1j*np.zeros((piximg, piximg))
+    #uvgrid = np.zeros((piximg, piximg)) + 1j*np.zeros((piximg, piximg))
     min_lambda=wavelength #minima longitud de onda lambda
     delta_x = (min_lambda / max_B) / 7
     delta_u = 1 / (piximg * delta_x)
 
-    u_pixel2 = np.floor(0.5 + coverage[:, 0] / delta_u + piximg / 2).astype(int)
-    v_pixel2 = np.floor(0.5 + coverage[:, 1] / delta_u + piximg / 2).astype(int)
+    u_pixel2 = np.floor(coverage[:, 0] / delta_u + piximg // 2).astype(int)
+    v_pixel2 = np.floor(coverage[:, 1] / delta_u + piximg // 2).astype(int)
+
+    weights = np.ones_like(u_pixel2, dtype=np.float32).ravel()
+    uv_pix_1d = piximg * v_pixel2 + u_pixel2
+    weights_after_scheme = weighting_scheme(weights, uv_pix_1d, piximg, scheme, robust_param)
+    weights_1d = np.bincount(uv_pix_1d, weights_after_scheme, minlength=piximg*piximg)
+    weight_image = np.reshape(weights_1d, (piximg,piximg))
+    
     
     #psf
-    np.add.at(uvgrid, (v_pixel2, u_pixel2), 1.0 + 1j*0.0)
-    psf = np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(uvgrid)))
+    #np.add.at(uvgrid, (v_pixel2, u_pixel2), 1.0 + 1j*0.0)
+
+    psf = np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(weight_image)))
     fft_norm = np.max(psf.real)
-    psf/= fft_norm
+    psf/= fft_norm 
+
     #se grafica
     figurePSF = plt.figure(figsize=(8, 8))
     plt.subplot()
     plt.title('Point Spread Function')
-    plt.imshow(psf.real, cmap=cmc.navia_r, vmax=0.1)
+    plt.imshow(psf.real, cmap=cmc.tofino_r, vmax=0.1)
     #se lleva a base64
     bufPSF = BytesIO()
     figurePSF.savefig(bufPSF, format='png')
     image_psf_base64 = base64.b64encode(bufPSF.getvalue()).decode()
     plt.close(figurePSF)
 
-    # S(u,v) = 1 otro caso S=0
-    sampling[v_pixel2, u_pixel2] = 1.0
+    # Sampling
     #se grafica
     figure = plt.figure(figsize=(8, 8))
     plt.subplot()
     plt.title('Cobertura cuadriculada')
-    plt.imshow(sampling.real, cmap=cmc.navia_r)
+    plt.imshow(weight_image, cmap=cmc.tofino_r)
     #se lleva base64
     buf = BytesIO()
     figure.savefig(buf, format='png')
     image_sampling_base64 = base64.b64encode(buf.getvalue()).decode()
     plt.close(figure)
     
-    return sampling, image_sampling_base64, image_psf_base64
+    return weight_image, image_sampling_base64, image_psf_base64
 
 def baselines(enu_coords):
     """
@@ -192,9 +223,9 @@ def coverage(baselines, HA, dec, wavelength):
 
 def fft_model_image(path):
     img = cv2.imread(path,0)
-    ffts = np.fft.fftshift(np.fft.fft2(img))
+    ft_data = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(img)))
     pix = img.shape[0]
-    return pix, ffts
+    return pix, ft_data
 
 def geodetic_to_enu(coords, reference_loc):
     ant_pos = EarthLocation.from_geodetic(coords[:,1], coords[:,0], coords[:,2])
@@ -202,7 +233,8 @@ def geodetic_to_enu(coords, reference_loc):
     enu_coords = earth_location_to_local_enu(ant_pos, ref_loc)
     return enu_coords
 
-def simulation(t_obs, dec,t_muestreo, path, geodetic_coords, reference_location, frequency):
+def simulation(t_obs, dec,t_muestreo, path, geodetic_coords, reference_location, frequency, scheme, robust_param):
+    print(robust_param)
     wavelength = const_c / (frequency*1e9)
     enu_coords = geodetic_to_enu(geodetic_coords, reference_location)
     baseline = baselines(enu_coords)
@@ -210,8 +242,8 @@ def simulation(t_obs, dec,t_muestreo, path, geodetic_coords, reference_location,
     HA, dec = compute_h(t_obs, dec, t_muestreo)
     UV_coverage, img_coverage = coverage(baseline_equatorial, HA, dec,wavelength)
     pixels, ffts=fft_model_image(path)
-    sampling, img_sampling, img_psf = grid_sampling(pixels, np.max(np.abs(baseline_equatorial)), UV_coverage, wavelength)
-    obs= np.abs(np.fft.ifft2(np.fft.ifftshift(ffts*sampling)))
+    sampling, img_sampling, img_psf = grid_sampling(pixels, np.max(np.abs(baseline_equatorial)), UV_coverage, wavelength, scheme, robust_param)
+    obs= (np.fft.ifftshift(np.fft.ifft2(np.fft.fftshift(ffts*sampling)))).real
     boolean, buffer = cv2.imencode(".png", obs)
     stream = BytesIO(buffer)
     img_dirty_base64 = base64.b64encode(stream.getvalue()).decode()

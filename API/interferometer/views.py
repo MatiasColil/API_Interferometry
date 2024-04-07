@@ -56,6 +56,8 @@ def simuGuest(request):
         new_pos,
         reference,
         parameters_data[0]["frequency"],
+        parameters_data[0]["scheme"],
+        parameters_data[0]["robust_param"]
     )
     return Response(
         [
@@ -138,7 +140,7 @@ class GroupRetrieveView(viewsets.ModelViewSet):
         groups = Group.objects.all()
         current_time = timezone.now()
         for group in groups:
-            device = Device.objects.filter(actual_group=group).first()
+            device = Device.objects.filter(actual_group=group).order_by("-modified_at").first()
             if device:
                 difference = current_time - device.modified_at
                 group.last_time_used = difference.total_seconds() / 3600
@@ -224,6 +226,8 @@ def simuAdmin(request):
             new_pos,
             reference,
             parameters["frequency"],
+            parameters["scheme"],
+            parameters["robust_param"]
         )
 
         message = messaging.MulticastMessage(tokens=tokenFCM)

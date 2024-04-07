@@ -19,6 +19,8 @@ class ParametersSerializer(serializers.Serializer):
     frequency = serializers.FloatField()
     idPath = serializers.IntegerField()
     scale = serializers.FloatField()
+    scheme = serializers.CharField()
+    robust_param = serializers.FloatField()
     
 class LocationsListSerializer(serializers.Serializer):
     locations = LocationSerializer(many=True)

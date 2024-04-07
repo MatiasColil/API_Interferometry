@@ -21,7 +21,6 @@ class Admin(models.Model):
     username = models.CharField(max_length=255, unique=True)
     password = models.CharField(max_length=100)
 
-
 class RefPoint(models.Model):
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
@@ -41,3 +40,5 @@ class Parameters(models.Model):
     idPath = models.IntegerField( blank=True, null=True)
     groupId = models.IntegerField(unique=True, blank=True, null=True)
     scale = models.FloatField(blank=True, null=True)
+    scheme = models.CharField(blank=True, null=True)
+    robust_param= models.FloatField(blank=True, null = True)
