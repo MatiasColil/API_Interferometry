@@ -1,6 +1,13 @@
 from rest_framework import serializers
 from .models import Device, Admin, Group, RefPoint, Imagen, Parameters
 
+"""
+Serializers: Serializers allow complex data such as querysets and model instances to be converted 
+to native Python datatypes that can then be easily rendered into JSON, XML or other content types.
+https://www.django-rest-framework.org/api-guide/serializers/
+"""
+
+
 class LocationSerializer(serializers.Serializer):
     latitude = serializers.FloatField()
     longitude = serializers.FloatField()

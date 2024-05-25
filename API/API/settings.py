@@ -25,9 +25,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-r0(f^@8__y&+3661h2&1$3ryksfw$fonsmtibe7)r^idk%d%k*'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+# Agregar la dirección de la maquina virtual en caso de no tener dominio
+
+ALLOWED_HOSTS = ['interferometryapp.com', 'www.interferometryapp.com', 'localhost', '127.0.0.1', '10.0.2.2']
 
 
 # Application definition

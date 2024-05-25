@@ -8,7 +8,6 @@ router.register(r'register',views.DeviceViewSet, basename="register")
 router.register(r'admin', views.AdminViewSet)
 router.register(r'groups', views.GroupRetrieveView)
 router.register(r'ref', views.RefPointView)
-router.register(r'message', views.MessageView, basename="message")
 router.register(r'imagenes', views.ImagenViewSet)
 router.register(r'parameters', views.ParametersViewSet)
 

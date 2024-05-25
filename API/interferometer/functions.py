@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import cv2
 from astropy.coordinates import EarthLocation, AltAz, ITRS
@@ -35,39 +35,44 @@ def weighting_scheme(weights, uv_pix_1d, N, scheme="natural", robust_param=2.):
         raise ValueError("Not known scheme")
 
 def new_positions(df, reference, scale):
-
-    lats = df[:,0]
-    lons = df[:,1]
     
-    # Bearing
-    dLons = np.radians(lons - reference[1])
-    y = np.sin(dLons) * np.cos(np.radians(lats))
-    x = np.cos(np.radians(reference[0])) * np.sin(np.radians(lats)) - np.sin(np.radians(reference[0])) * np.cos(np.radians(lats)) * np.cos(dLons)
-    bearing = np.degrees(np.arctan2(y, x))
-    bearing = np.trunc((bearing + 360) % 360)
-
-    # Nuevas posiciones
-    R = 6371000
-    latRef = np.radians(reference[0])
-    lonRef = np.radians(reference[1])
-    bearing = np.radians(bearing)
-
-    delta_lats = np.radians(lats) - latRef
-    delta_lons = np.radians(lons) - lonRef
-
-    a = np.sin(delta_lats / 2.0)**2 + np.cos(latRef) * np.cos(np.radians(lats)) * np.sin(delta_lons / 2.0)**2
-    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+    if scale == 1:
+        return df
     
-    # Calcular la distancia para cada par de puntos
-    distances = (R * c) * scale 
+    else:
 
-    lat2 = np.arcsin(np.sin(latRef) * np.cos(distances / R) + np.cos(latRef) * np.sin(distances / R) * np.cos(bearing))
-    lon2 = lonRef + np.arctan2(np.sin(bearing) * np.sin(distances / R) * np.cos(latRef), np.cos(distances / R) - np.sin(latRef) * np.sin(lat2))
-    
+        lats = df[:,0]
+        lons = df[:,1]
+        
+        # Bearing
+        dLons = np.radians(lons - reference[1])
+        y = np.sin(dLons) * np.cos(np.radians(lats))
+        x = np.cos(np.radians(reference[0])) * np.sin(np.radians(lats)) - np.sin(np.radians(reference[0])) * np.cos(np.radians(lats)) * np.cos(dLons)
+        bearing = np.degrees(np.arctan2(y, x))
+        bearing = np.trunc((bearing + 360) % 360)
 
-    arr = np.column_stack((np.degrees(lat2), np.degrees(lon2), df[:,2]))
+        # Nuevas posiciones
+        R = 6371000
+        latRef = np.radians(reference[0])
+        lonRef = np.radians(reference[1])
+        bearing = np.radians(bearing)
 
-    return arr
+        delta_lats = np.radians(lats) - latRef
+        delta_lons = np.radians(lons) - lonRef
+
+        a = np.sin(delta_lats / 2.0)**2 + np.cos(latRef) * np.cos(np.radians(lats)) * np.sin(delta_lons / 2.0)**2
+        c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+        
+        # Calcular la distancia para cada par de puntos
+        distances = (R * c) * scale 
+
+        lat2 = np.arcsin(np.sin(latRef) * np.cos(distances / R) + np.cos(latRef) * np.sin(distances / R) * np.cos(bearing))
+        lon2 = lonRef + np.arctan2(np.sin(bearing) * np.sin(distances / R) * np.cos(latRef), np.cos(distances / R) - np.sin(latRef) * np.sin(lat2))
+        
+
+        arr = np.column_stack((np.degrees(lat2), np.degrees(lon2), df[:,2]))
+
+        return arr
 
 def _earthlocation_to_altaz(location, reference_location):
     itrs_cart = location.get_itrs().cartesian
@@ -106,7 +111,7 @@ def compute_h(hObs, gradDec, t_muestreo):
     hObs: tiempo de observación en horas
     gradDec: declinación en grados
     t_muestreo: tiempo de muestreo en minutos
-       """
+    """
 
     observacion_grados = hObs * 15.0
     HA = np.arange(-np.radians(observacion_grados), np.radians(observacion_grados), np.radians((t_muestreo/60)*15))  # [radianes]
@@ -121,9 +126,7 @@ def grid_sampling(piximg, max_B, coverage, wavelength, scheme, robust_param):
     wavelength: longitud de onda
     scheme: tipo de esquema, natural, uniform o robust
 
-       """
-    #sampling = np.zeros((piximg, piximg)) + 1j*np.zeros((piximg, piximg))
-    #uvgrid = np.zeros((piximg, piximg)) + 1j*np.zeros((piximg, piximg))
+    """
     min_lambda=wavelength #minima longitud de onda lambda
     delta_x = (min_lambda / max_B) / 7
     delta_u = 1 / (piximg * delta_x)
@@ -155,6 +158,9 @@ def grid_sampling(piximg, max_B, coverage, wavelength, scheme, robust_param):
     figurePSF.savefig(bufPSF, format='png')
     image_psf_base64 = base64.b64encode(bufPSF.getvalue()).decode()
     plt.close(figurePSF)
+    plt.clf()
+    plt.cla()
+    plt.close('all')  # Cierra todas las figuras abiertas
 
     # Sampling
     #se grafica
@@ -167,6 +173,9 @@ def grid_sampling(piximg, max_B, coverage, wavelength, scheme, robust_param):
     figure.savefig(buf, format='png')
     image_sampling_base64 = base64.b64encode(buf.getvalue()).decode()
     plt.close(figure)
+    plt.clf()
+    plt.cla()
+    plt.close('all')  # Cierra todas las figuras abiertas
     
     return weight_image, image_sampling_base64, image_psf_base64
 
@@ -218,6 +227,9 @@ def coverage(baselines, HA, dec, wavelength):
     fig.savefig(buf, format='png')
     image_base64 = base64.b64encode(buf.getvalue()).decode()
     plt.close(fig)
+    plt.clf()
+    plt.cla()
+    plt.close('all')  # Cierra todas las figuras abiertas
 
     return UV_coverage, image_base64
 
@@ -234,7 +246,6 @@ def geodetic_to_enu(coords, reference_loc):
     return enu_coords
 
 def simulation(t_obs, dec,t_muestreo, path, geodetic_coords, reference_location, frequency, scheme, robust_param):
-    print(robust_param)
     wavelength = const_c / (frequency*1e9)
     enu_coords = geodetic_to_enu(geodetic_coords, reference_location)
     baseline = baselines(enu_coords)
