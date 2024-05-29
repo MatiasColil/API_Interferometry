@@ -12,7 +12,7 @@
 
     `pip install psycopg2`
 
-4. Descomentar la siguiente linea en el archivo url.py del directorio `\API\API\`.
+4. Descomentar la siguiente linea en el archivo url.py del directorio `\API\API\` para que se sirvan las imagenes modelo.
 
     ```bash
    + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
@@ -96,4 +96,4 @@
 
 12. Para ver logs de error en tiempo real `tail -f /var/log/nginx/error.log` o `tail -f error.log`
 
-13. Recordar habilitar los puertos en el Firewall.
+13. Recordar habilitar los puertos HTTP en el Firewall.

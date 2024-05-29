@@ -4,7 +4,7 @@ import os
 from interferometer.models import Imagen
 
 class Command (BaseCommand):
-    help = "Verifica si las imagenes modelo están subidas, en caso contrario las sube"
+    help = "Verifica si las imagenes modelo están subidas, en caso contrario las sube a la DB. Las imagenes se encuentran en el directorio \API\img"
 
     def handle(self, *args, **kwargs):
         try:
