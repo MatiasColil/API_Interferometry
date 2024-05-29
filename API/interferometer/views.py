@@ -65,9 +65,9 @@ def simuGuest(request):
     imagen_instance = get_object_or_404(Imagen, id=parameters_data[0]["idPath"])
     image_path = "./media/" + imagen_instance.archivo.name
     dvice = dvice.drop(
-        ["id", "device_id", "actual_group", "modified_at", "tokenFCM"], axis=1
+        ["id", "device_id", "actual_group", "modified_at", "tokenFCM", "distance"], axis=1
     )
-    array = np.array(dvice)
+    array = np.array(dvice).astype(float)
     reference = np.array(
         [
             refpoint_data[0]["latitude"],
@@ -268,9 +268,9 @@ def simuAdmin(request):
         image_path = "./media/" + imagen_instance.archivo.name
         tokenFCM = list(dvice["tokenFCM"])
         dvice = dvice.drop(
-            ["id", "device_id", "actual_group", "modified_at", "tokenFCM"], axis=1
+            ["id", "device_id", "actual_group", "modified_at", "tokenFCM", "distance"], axis=1
         )
-        array = np.array(dvice)
+        array = np.array(dvice).astype(float)
         reference = np.array(
             [
                 refpoint_data[0]["latitude"],
@@ -278,6 +278,7 @@ def simuAdmin(request):
                 refpoint_data[0]["altitude"],
             ]
         )
+
         new_pos = new_positions(array, reference, parameters["scale"])
         img_dirty, img_coverage, img_sampling, img_psf = simulation(
             parameters["observationTime"],

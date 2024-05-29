@@ -4,21 +4,22 @@
     - Python >= 3.11
     - PostgreSQL
 
-2. Instalar librerias necesarias del archivo requirements.txt del directorio `\API\`.
+2. Instalar el paquete libpq-dev. Relevante para poder instalar la libreria de python psycopg2
+
+    `sudo apt-get install libpq-dev`
+
+3. Instalar librerias necesarias del archivo requirements.txt del directorio `\API\`.
 
     `pip install -r requirements.txt`
     
-3. Instalar psycopg2.
+4. Instalar PostgreSQL y configurar la DB con nombre "interferometry". En el archivo settings se encuentra nombre y usuario esperado.
 
-    `pip install psycopg2`
 
-4. Descomentar la siguiente linea en el archivo url.py del directorio `\API\API\` para que se sirvan las imagenes modelo.
+5. Descomentar la siguiente linea en el archivo url.py del directorio `\API\API\` para que se sirvan las imagenes modelo.
 
     ```bash
    + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
    ```
-    
-5. Crear base de datos con nombre `interferometry`. En caso de tener un distinto "user", "password", "host" o "port", realizar los cambios pertinentes al apartado "DATABASES" del archivo settings.py que se encuentra en `\API\API\`
    
 6. Realizar migraciones en el directorio `\API\ `.
 
